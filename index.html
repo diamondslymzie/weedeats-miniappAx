@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>WeedEats</title>
+  <title>WeedEats • Like Uber Eats</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -21,18 +21,18 @@
   </style>
 </head>
 <body>
-  <h1>🍔 WeedEats </h1>
+  <h1>🍔 WeedEats • Uber Eats Style (Pretoria)</h1>
 
-  <!-- Tab 0: Discover (Home like Uber Eats) -->
+  <!-- Tab 0: Discover -->
   <div id="discover" class="tab active">
-    <input type="text" id="search" placeholder="🔎 Search restaurants, food or weed..." onkeyup="filterItems()">
+    <input type="text" id="search" placeholder="🔎 Search restaurants, food, weed, KFC..." onkeyup="filterItems()">
     <div style="margin:10px 0;">
       <button onclick="toggleCategory('all')" style="background:#0a0;color:#000;">All</button>
-      <button onclick="toggleCategory('food')" style="background:#333;">Food</button>
+      <button onclick="toggleCategory('food')" style="background:#333;">🍔 Food</button>
       <button onclick="toggleCategory('weed')" style="background:#060;">🌿 Weed</button>
     </div>
     <div id="map" style="height:260px; border-radius:12px;"></div>
-    <h3>🔥 Popular near you</h3>
+    <h3>🔥 Popular near Pretoria</h3>
     <div id="list"></div>
   </div>
 
@@ -83,22 +83,37 @@
     let currentPlace = null;
     let currentCategory = 'all';
 
-    // Mock data: Normal food + Weed as plus
+    // Expanded Pretoria data – many restaurants + weed as plus
     const places = [
-      {id:1, type:'food', name:"McDonalds Pretoria", lat:-25.746, lng:28.188, time:"15 min", rating:4.8,
-       products:[{id:11,name:"Big Mac",price:89,desc:"Classic burger",img:"https://picsum.photos/200?food1"}]},
-      {id:2, type:'food', name:"KFC Hatfield", lat:-25.75, lng:28.19, time:"20 min", rating:4.6,
-       products:[{id:21,name:"Bucket Meal",price:199,desc:"Family size",img:"https://picsum.photos/200?food2"}]},
-      {id:3, type:'weed', name:"Green Leaf Co", lat:-25.7461, lng:28.1885, time:"12 min", rating:4.9,
-       products:[{id:31,name:"OG Kush Flower",price:280,desc:"Premium",img:"https://picsum.photos/200?weed1"},
-                 {id:32,name:"THC Gummies",price:160,desc:"Edibles",img:"https://picsum.photos/200?weed2"}]},
-      {id:4, type:'weed', name:"High Street Buds", lat:-25.755, lng:28.20, time:"18 min", rating:4.7,
-       products:[{id:41,name:"Blue Dream",price:320,desc:"Hybrid",img:"https://picsum.photos/200?weed3"}]}
+      // Food restaurants (spread across Pretoria)
+      {id:1, type:'food', name:"McDonald's Hatfield", lat:-25.752, lng:28.198, time:"10-20 min", rating:4.5,
+       products:[{id:11,name:"Big Mac Meal",price:89,desc:"Classic",img:"https://picsum.photos/200?mc1"}]},
+      {id:2, type:'food', name:"KFC Brooklyn", lat:-25.760, lng:28.210, time:"15-25 min", rating:4.6,
+       products:[{id:21,name:"Streetwise Bucket",price:199,desc:"Family",img:"https://picsum.photos/200?kfc1"}]},
+      {id:3, type:'food', name:"Spur Menlyn", lat:-25.780, lng:28.270, time:"20-30 min", rating:4.4,
+       products:[{id:31,name:"Legendary Spur Burger",price:145,desc:"With chips",img:"https://picsum.photos/200?spur1"}]},
+      {id:4, type:'food', name:"Propaganda Pretoria", lat:-25.740, lng:28.180, time:"12-22 min", rating:5.0,
+       products:[{id:41,name:"Signature Burger",price:120,desc:"Gourmet",img:"https://picsum.photos/200?prop1"}]},
+      {id:5, type:'food', name:"The Blue Crane", lat:-25.730, lng:28.240, time:"18-28 min", rating:4.8,
+       products:[{id:51,name:"Grilled Chicken",price:165,desc:"With sides",img:"https://picsum.photos/200?blue1"}]},
+      {id:6, type:'food', name:"Nando's Arcadia", lat:-25.745, lng:28.190, time:"10-15 min", rating:4.7,
+       products:[{id:61,name:"Peri-Peri Chicken",price:110,desc:"Flame grilled",img:"https://picsum.photos/200?nandos1"}]},
+      
+      // Weed dispensaries (plus function)
+      {id:7, type:'weed', name:"Green Leaf Co", lat:-25.7461, lng:28.1885, time:"12-20 min", rating:4.9,
+       products:[{id:71,name:"OG Kush Flower",price:280,desc:"Premium Indica",img:"https://picsum.photos/200?weed1"},
+                 {id:72,name:"THC Gummies 10pk",price:160,desc:"Edibles",img:"https://picsum.photos/200?weed2"}]},
+      {id:8, type:'weed', name:"High Street Buds", lat:-25.755, lng:28.200, time:"15-25 min", rating:4.7,
+       products:[{id:81,name:"Blue Dream Hybrid",price:320,desc:"Balanced",img:"https://picsum.photos/200?weed3"}]},
+      {id:9, type:'weed', name:"Nordic Bloom", lat:-25.770, lng:28.250, time:"18-28 min", rating:4.8,
+       products:[{id:91,name:" Durban Poison",price:250,desc:"Sativa",img:"https://picsum.photos/200?weed4"}]},
+      {id:10, type:'weed', name:"420 Twig", lat:-25.735, lng:28.220, time:"10-18 min", rating:4.6,
+       products:[{id:101,name:"Edible Chocolate",price:180,desc:"THC infused",img:"https://picsum.photos/200?weed5"}]}
     ];
 
     let map;
     function initMap() {
-      map = L.map('map').setView([-25.75, 28.19], 13);
+      map = L.map('map').setView([-25.746, 28.188], 13); // Centered on Pretoria
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
       renderList();
     }
@@ -116,10 +131,15 @@
     }
 
     function filterItems() {
-      const term = document.getElementById('search').value.toLowerCase();
+      const term = document.getElementById('search').value.toLowerCase().trim();
       let filtered = places;
       if (currentCategory !== 'all') filtered = filtered.filter(p => p.type === currentCategory);
-      if (term) filtered = filtered.filter(p => p.name.toLowerCase().includes(term) || p.products.some(pr => pr.name.toLowerCase().includes(term)));
+      if (term) {
+        filtered = filtered.filter(p => 
+          p.name.toLowerCase().includes(term) || 
+          p.products.some(pr => pr.name.toLowerCase().includes(term) || pr.desc.toLowerCase().includes(term))
+        );
+      }
       renderList(filtered);
     }
 
@@ -178,7 +198,7 @@
       if (!cart.length) return alert("Cart empty!");
       const total = cart.reduce((s,item) => s + item.price*item.qty, 0);
       if (confirm(`Order R${total} now? (Delivery ~15-25 min)`)) {
-        alert("✅ Order placed! Real-time tracking below.");
+        alert("✅ Order placed! 🚚 Live tracking active.");
         showTracking();
         cart = [];
         localStorage.setItem('cart', JSON.stringify(cart));
@@ -187,7 +207,7 @@
     }
 
     function showTracking() {
-      alert("🚚 Live Tracking:\n• Preparing at restaurant/dispensary\n• Driver picked up\n• On the way – ETA 14 min\n(Full map tracking can be expanded later)");
+      alert("🚚 Order Tracking:\n• Preparing at restaurant/dispensary\n• Driver picked up\n• On the way – ETA 12-18 min");
     }
 
     function switchTab(n) {
@@ -197,7 +217,7 @@
       if (n === 1 && currentPlace) renderProducts();
     }
 
-    // Life Sim (unchanged but integrated)
+    // Life Sim (same as before)
     function updateStatus() {
       const inv = player.inventory.length ? player.inventory.join(' • ') : 'Start hustling!';
       document.getElementById('status').innerHTML = `Path: ${player.path ? player.path.toUpperCase() : 'Choose destiny'}<br>💰 R${player.money} | Level ${player.level} | Rep ${player.rep}%<br>Inventory: ${inv}`;
@@ -225,10 +245,9 @@
       }
       localStorage.setItem('player', JSON.stringify(player));
       updateStatus();
-      alert(e.t + " (Police/Judge logic active)");
+      alert(e.t);
     }
 
-    // Games
     function showGame(type) {
       const container = document.getElementById('gameContainer');
       if (type === 'brick') {
@@ -252,7 +271,7 @@
         c.addEventListener('touchmove', e=>{px = Math.max(0,Math.min(240,e.touches[0].clientX-40));});
         loop();
       } else {
-        container.innerHTML = `<p>${type} game ready (tap/expand later)</p>`;
+        container.innerHTML = `<p>${type} game ready</p>`;
       }
     }
 
