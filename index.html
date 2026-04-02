@@ -3,36 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>WeedEats • Uber Eats Style (Pretoria)</title>
+  <title>WeedEats • Uber Eats + Weed Locator</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     body { margin:0; font-family:system-ui; background:#111; color:#fff; }
-    h1 { background:#000; color:#0f0; text-align:center; padding:15px; margin:0; font-size:22px; }
+    h1 { background:#000; color:#0f0; text-align:center; padding:15px; margin:0; }
     nav { position:fixed; bottom:0; width:100%; display:flex; background:#1a1a1a; z-index:100; }
     nav button { flex:1; padding:14px 6px; background:none; border:none; color:#0f0; font-size:12px; }
     .tab { display:none; padding:15px; padding-bottom:80px; }
     .active { display:block; }
     .card { background:#222; border-radius:12px; padding:12px; margin:10px 0; }
     input { width:100%; padding:14px; background:#333; color:#fff; border:none; border-radius:8px; }
-    canvas { display:block; margin:15px auto; border:3px solid #0f0; background:#000; max-width:100%; }
-    button { border-radius:8px; padding:12px; }
+    .user-info { text-align:center; margin:10px 0; }
+    img { border-radius:50%; width:50px; height:50px; }
   </style>
 </head>
 <body>
-  <h1>🍔 WeedEats • Uber Eats Style</h1>
+  <h1>🍔 WeedEats</h1>
+  <div class="user-info" id="userInfo"></div>
 
-  <!-- Discover Tab -->
+  <!-- Discover Tab (Uber Eats Home) -->
   <div id="discover" class="tab active">
-    <input type="text" id="search" placeholder="🔎 Search restaurants, KFC, weed, gummies..." onkeyup="filterItems()">
+    <input type="text" id="search" placeholder="🔎 Search food or weed..." onkeyup="filterItems()">
     <div style="margin:10px 0;">
       <button onclick="toggleCategory('all')" style="background:#0a0;color:#000;">All</button>
       <button onclick="toggleCategory('food')" style="background:#333;">🍔 Food</button>
-      <button onclick="toggleCategory('weed')" style="background:#060;">🌿 Weed</button>
+      <button onclick="toggleCategory('weed')" style="background:#060;">🌿 Weed Dispensaries</button>
     </div>
+    <button onclick="useMyLocation()" style="width:100%;background:#0a0;color:#000;margin:10px 0;">📍 Use My Location</button>
     <div id="map" style="height:260px; border-radius:12px;"></div>
-    <h3>🔥 Popular in Pretoria</h3>
+    <h3>Nearby in Pretoria</h3>
     <div id="list"></div>
   </div>
 
@@ -48,58 +50,172 @@
     </div>
   </div>
 
-  <!-- Games Tab -->
-  <div id="games" class="tab">
-    <h2>🎮 Mini Games Hub</h2>
-    <button onclick="showGame('brick')" style="width:100%;margin:8px 0;background:#222;">🧱 Brick Breaker</button>
-    <button onclick="showGame('runner')" style="width:100%;margin:8px 0;background:#222;">🏃 Subway Runner</button>
-    <button onclick="showGame('puzzle')" style="width:100%;margin:8px 0;background:#222;">🧩 Memory Match Puzzle</button>
-    <button onclick="showGame('word')" style="width:100%;margin:8px 0;background:#222;">📝 Missing Word</button>
-    <div id="gameContainer" style="margin-top:20px;"></div>
-  </div>
-
-  <!-- Life Sim Tab -->
+  <!-- Life Sim Tab (kept simple, can expand later) -->
   <div id="life" class="tab">
-    <h2>🧬 Gangster or Corporate Life Sim</h2>
+    <h2>🧬 Your Life (Gangster / Corporate)</h2>
     <div id="status" class="card"></div>
-    <button onclick="choosePath('gangster')" style="width:100%;margin:8px 0;background:#222;">🚨 Join the Streets (Gangster)</button>
-    <button onclick="choosePath('corporate')" style="width:100%;margin:8px 0;background:#222;">📚 Corporate Grind</button>
-    <button onclick="randomEvent()" style="width:100%;margin:8px 0;background:#f80;">⏳ Next Day (Police & Judge)</button>
-    <div id="inventory" class="card"></div>
+    <button onclick="choosePath('gangster')" style="width:100%;margin:8px 0;background:#222;">Join Streets</button>
+    <button onclick="choosePath('corporate')" style="width:100%;margin:8px 0;background:#222;">Corporate Path</button>
+    <button onclick="randomEvent()" style="width:100%;margin:8px 0;background:#f80;">Next Day Event</button>
   </div>
 
   <nav>
     <button onclick="switchTab(0)">🏠 Discover</button>
-    <button onclick="switchTab(1)">🛍️ Menu</button>
-    <button onclick="switchTab(2)">🎮 Games</button>
-    <button onclick="switchTab(3)">🧬 Life</button>
+    <button onclick="switchTab(1)">🛍️ Menu/Cart</button>
+    <button onclick="switchTab(2)">🧬 Life</button>
   </nav>
 
   <script>
     const tg = window.Telegram.WebApp;
-    tg.expand(); tg.ready(); tg.setHeaderColor("#000");
+    tg.expand(); tg.ready();
 
-    let player = JSON.parse(localStorage.getItem('player')) || {path:null, money:1000, level:1, rep:60, inventory:[]};
+    // Telegram Login / User
+    let currentUser = {id: null, first_name: "User"};
+    function showUserInfo() {
+      const user = tg.initDataUnsafe?.user || {};
+      currentUser = {id: user.id || 123456, first_name: user.first_name || "User", username: user.username};
+      document.getElementById('userInfo').innerHTML = `
+        <img src="${user.photo_url || 'https://picsum.photos/50'}" alt="avatar">
+        <p>Welcome, ${currentUser.first_name}!</p>
+      `;
+    }
+
+    // Places: Food (Uber Eats style) + Weed Dispensaries (Pretoria area)
+    const places = [
+      // Food
+      {id:1, type:'food', name:"McDonald's Hatfield", lat:-25.752, lng:28.198, time:"10-20 min", rating:4.5, products:[{id:11,name:"Big Mac Meal",price:89,desc:"Classic"}]},
+      {id:2, type:'food', name:"KFC Brooklyn", lat:-25.760, lng:28.210, time:"15-25 min", rating:4.6, products:[{id:21,name:"Streetwise Bucket",price:199,desc:"Family"}]},
+      {id:3, type:'food', name:"Nando's Arcadia", lat:-25.745, lng:28.190, time:"10-15 min", rating:4.7, products:[{id:31,name:"Peri-Peri Chicken",price:110,desc:"Flame grilled"}]},
+      {id:4, type:'food', name:"Spur Menlyn", lat:-25.780, lng:28.270, time:"20-30 min", rating:4.4, products:[{id:41,name:"Burger & Chips",price:145,desc:"Classic"}]},
+
+      // Weed Dispensaries (plus feature - real SA delivery inspired)
+      {id:5, type:'weed', name:"Dank Stores Hatfield", lat:-25.748, lng:28.195, time:"12-20 min", rating:4.9, products:[{id:51,name:"OG Kush Flower",price:280,desc:"Premium Indica"}]},
+      {id:6, type:'weed', name:"Green Leaf Co", lat:-25.7461, lng:28.1885, time:"10-18 min", rating:4.8, products:[{id:61,name:"THC Gummies",price:160,desc:"Edibles"}]},
+      {id:7, type:'weed', name:"Hey Bud Social Delivery", lat:-25.755, lng:28.200, time:"15-25 min", rating:4.7, products:[{id:71,name:"Blue Dream Hybrid",price:320,desc:"Balanced"}]},
+      {id:8, type:'weed', name:"Taste of Cannabis Pretoria", lat:-25.770, lng:28.250, time:"18-28 min", rating:4.6, products:[{id:81,name:"Durban Poison",price:250,desc:"Sativa"}]} 
+    ];
+
     let cart = [];
     let currentPlace = null;
     let currentCategory = 'all';
+    let map;
 
-    // More Pretoria restaurants + realistic weed dispensaries (plus feature)
-    const places = [
-      // Food
-      {id:1, type:'food', name:"McDonald's Hatfield", lat:-25.752, lng:28.198, time:"10-20 min", rating:4.5,
-       products:[{id:11,name:"Big Mac Meal",price:89,desc:"Classic burger",img:"https://picsum.photos/200?mc1"}]},
-      {id:2, type:'food', name:"KFC Brooklyn", lat:-25.760, lng:28.210, time:"15-25 min", rating:4.6,
-       products:[{id:21,name:"Streetwise Bucket",price:199,desc:"Family meal",img:"https://picsum.photos/200?kfc1"}]},
-      {id:3, type:'food', name:"Spur Menlyn", lat:-25.780, lng:28.270, time:"20-30 min", rating:4.4,
-       products:[{id:31,name:"Spur Burger",price:145,desc:"With chips",img:"https://picsum.photos/200?spur1"}]},
-      {id:4, type:'food', name:"Nando's Arcadia", lat:-25.745, lng:28.190, time:"10-15 min", rating:4.7,
-       products:[{id:41,name:"Peri-Peri Chicken",price:110,desc:"Flame grilled",img:"https://picsum.photos/200?nandos1"}]},
-      {id:5, type:'food', name:"Propaganda", lat:-25.740, lng:28.180, time:"12-22 min", rating:5.0,
-       products:[{id:51,name:"Signature Burger",price:120,desc:"Gourmet",img:"https://picsum.photos/200?prop1"}]},
+    function initMap(centerLat = -25.75, centerLng = 28.20) {
+      if (map) map.remove();
+      map = L.map('map').setView([centerLat, centerLng], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      renderList(places);
+    }
 
-      // Weed dispensaries (plus function – more realistic names/locations)
-      {id:6, type:'weed', name:"Dank Stores Hatfield", lat:-25.748, lng:28.195, time:"12-20 min", rating:4.9,
-       products:[{id:61,name:"OG Kush Flower",price:280,desc:"Premium Indica",img:"https://picsum.photos/200?weed1"},
-                 {id:62,name:"THC Gummies",price:160,desc:"Mixed edibles",img:"https://picsum.photos/200?weed2"}]},
-      {id:7, type:'weed', name:"Green Leaf Co",
+    function renderList(filtered) {
+      const container = document.getElementById('list');
+      container.innerHTML = '';
+      filtered.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `<b>${p.name}</b> ⭐${p.rating} • ${p.time}<br><button onclick="openMenu(${p.id})" style="width:100%;margin-top:8px;background:#0a0;color:#000;">Browse Menu</button>`;
+        container.appendChild(div);
+        L.marker([p.lat, p.lng]).addTo(map).bindPopup(p.name).on('click', () => openMenu(p.id));
+      });
+    }
+
+    function filterItems() {
+      const term = document.getElementById('search').value.toLowerCase().trim();
+      let filtered = places;
+      if (currentCategory !== 'all') filtered = filtered.filter(p => p.type === currentCategory);
+      if (term) filtered = filtered.filter(p => p.name.toLowerCase().includes(term) || p.products.some(pr => pr.name.toLowerCase().includes(term)));
+      renderList(filtered);
+    }
+
+    function toggleCategory(cat) {
+      currentCategory = cat;
+      filterItems();
+    }
+
+    function useMyLocation() {
+      tg.requestGeolocation(); // Telegram geolocation
+      // In real use, listen to location event - for demo we center on Pretoria
+      alert("Location shared! Centering map on Pretoria area.");
+      initMap(-25.75, 28.20);
+    }
+
+    function openMenu(id) {
+      currentPlace = places.find(p => p.id === id);
+      document.getElementById('selected-name').textContent = currentPlace.name + " Menu";
+      switchTab(1);
+      renderProducts();
+    }
+
+    function renderProducts() {
+      const container = document.getElementById('product-list');
+      container.innerHTML = '';
+      currentPlace.products.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `<h4>${p.name} – R${p.price}</h4><p>${p.desc}</p><button onclick="addToCart(${p.id})" style="width:100%;background:#0a0;color:#000;">Add to Cart</button>`;
+        container.appendChild(div);
+      });
+    }
+
+    function addToCart(id) {
+      const product = currentPlace.products.find(p => p.id === id);
+      cart.push({...product, qty:1});
+      localStorage.setItem('cart', JSON.stringify(cart));
+      updateCart();
+    }
+
+    function updateCart() {
+      document.getElementById('cart-count').textContent = cart.length;
+      let total = 0;
+      const itemsDiv = document.getElementById('cart-items');
+      itemsDiv.innerHTML = '';
+      cart.forEach((item,i) => {
+        total += item.price * item.qty;
+        const row = document.createElement('div');
+        row.innerHTML = `${item.name} ×${item.qty} – R${item.price*item.qty} <button onclick="removeFromCart(${i})" style="color:red;">Remove</button>`;
+        itemsDiv.appendChild(row);
+      });
+      document.getElementById('cart-total').textContent = total;
+    }
+
+    function removeFromCart(i) {
+      cart.splice(i,1);
+      localStorage.setItem('cart', JSON.stringify(cart));
+      updateCart();
+    }
+
+    function checkout() {
+      if (!cart.length) return alert("Cart empty!");
+      const total = cart.reduce((s,item) => s + item.price*item.qty, 0);
+      if (confirm(`Order R${total} for delivery? (TON payment option coming)`)) {
+        alert("✅ Order placed! 🚚 Live tracking: Preparing → On the way");
+        cart = [];
+        localStorage.setItem('cart', JSON.stringify(cart));
+        updateCart();
+      }
+    }
+
+    function switchTab(n) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab')[n].classList.add('active');
+      if (n === 0 && !map) initMap();
+    }
+
+    // Simple Life Sim
+    let player = JSON.parse(localStorage.getItem('player')) || {path:null, money:1000};
+    function updateStatus() {
+      document.getElementById('status').innerHTML = `Path: ${player.path || 'None'}<br>Money: R${player.money}`;
+    }
+    function choosePath(p) { player.path = p; localStorage.setItem('player', JSON.stringify(player)); updateStatus(); alert(`Now in ${p} mode`); }
+    function randomEvent() { alert(player.path === 'gangster' ? "Street event!" : "Corporate bonus!"); }
+
+    window.onload = () => {
+      showUserInfo();
+      updateStatus();
+      updateCart();
+      tg.MainButton.setText("Order Now").show().onClick(() => switchTab(0));
+      initMap(); // Start with map
+    };
+  </script>
+</body>
+</html>
